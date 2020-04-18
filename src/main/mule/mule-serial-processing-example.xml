@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	
+	<flow name="mule-serial-processing-exampleFlow" doc:id="5a768388-a4a2-4deb-b00f-b58390d3e671" maxConcurrency="1">
+		<anypoint-mq:subscriber doc:name="Subscriber" doc:id="82318294-557e-4c02-9340-f8119e085362" config-ref="Anypoint_MQ_Config" destination="FIFOQueue" acknowledgementMode="MANUAL">
+			<anypoint-mq:subscriber-type >
+				<anypoint-mq:polling fetchSize="1" >
+					<scheduling-strategy >
+						<fixed-frequency />
+					</scheduling-strategy>
+				</anypoint-mq:polling>
+			</anypoint-mq:subscriber-type>
+		</anypoint-mq:subscriber>
+		<logger level="INFO" doc:name="Logger" doc:id="d7f8f035-31ae-4ed5-b87c-54734f061069" message="Picked the event from the FIFO"/>
+		<set-variable value="#[attributes.ackToken]" doc:name="Set Variable" doc:id="cc6ba092-561c-4879-b1fd-ec9a0379b3b1" variableName="ackToken"/>
+		<http:request method="GET" doc:name="call sys api" doc:id="98d84828-8cc4-4b6c-8bf2-37a47aadf3b3" config-ref="HTTP_Request_configuration" path="/sysAPICall" />
+		<logger level="INFO" doc:name="Logger" doc:id="4c68d4b7-f679-4807-a370-7ba6f243edaf" message="All good !" />
+		<anypoint-mq:ack doc:name="Ack" doc:id="f7d2d53e-ed11-4f74-9f06-7b2f96fd7c63" config-ref="Anypoint_MQ_Config" ackToken="#[vars.ackToken]" />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="78936a3d-914a-4129-b79f-c11db5269c45" >
+				<logger level="INFO" doc:name="Logger" doc:id="9d7f618e-baee-4c5a-86eb-f7308fb493df" message="Error in calling Sys API"/>
+				<logger level="INFO" doc:name="Logger" doc:id="4b7131ef-4919-4179-ac4a-9db5e3c7c920" message="#[error.description]"/>
+				<ee:transform doc:name="Map NACK" doc:id="3ff2d02f-b2ac-4d3f-a4b2-0522e8d183ff" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+ackToken: vars.ackToken
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<vm:publish queueName="NACKQueue" doc:name="Publish NACK" doc:id="11613b2d-35b1-4977-9fa1-80318d5d1d6e" config-ref="VM_Config" sendCorrelationId="ALWAYS" />
+			
+			
+			<!-- commenting this - another option to start a flow asynchronously
+			
+			<ee:transform doc:name="Map start event" doc:id="52ee903a-1a87-40b7-bb51-5b013aea3ccc" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+{
+	dummy: "dummy"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<vm:publish queueName="startHCQueue" doc:name="Publish start event" doc:id="bd800d5e-5335-42b4-9172-ac47113c2a9e" config-ref="VM_Config" />
+		 -->		
+			
+			
+				<logger level="INFO" doc:name="Logger" doc:id="2cf37f8f-4094-4a25-a30a-03ac423e7417" message="Published NACK to the VM" />
+				<flow-ref doc:name="start-HealthCheck" doc:id="da944b48-58b2-48b4-aff5-a18d74ff5bc9" name="start-HealthCheck"/>
+				<flow-ref doc:name="shut-AMQListener" doc:id="d4c3bd7b-63f1-472f-b1d0-4611cac23094" name="shut-AMQListener" />
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="subscribe-vm-NACK-AMQ-event" doc:id="5d1f7fb6-6fd4-4dcb-8c08-90c79f730a9b" >
+		<vm:listener queueName="NACKQueue" doc:name="Listener" doc:id="7fe94061-438d-4f63-9825-4a3508f7322c" config-ref="VM_Config" />
+		<logger level="INFO" doc:name="Logger" doc:id="25b6d463-8f90-4b66-bf19-dfbfb6de0729" message="#[payload]" />
+		<ee:transform doc:name="Map the NACK" doc:id="f8012821-3a24-4719-a793-e9c14c3a633d" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="ackTokenNACK" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.ackToken]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<anypoint-mq:nack doc:name="Nack" doc:id="8ddc1fd2-7631-4de3-a9c7-0d76554587de" config-ref="Anypoint_MQ_Config" ackToken="#[vars.ackTokenNACK]" />
+		<logger level="INFO" doc:name="Logger" doc:id="cecde8d0-2f36-4fae-b66b-5eae52851484" message="NACKED" />
+	</flow>
+	<flow name="check-health-to-restart-polling" doc:id="d425f2bc-ea57-4de2-84bb-4ced60fba415" initialState="stopped">
+		<scheduler doc:name="Scheduler" doc:id="3de47697-a2e8-4373-ba71-794bfed19b21" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="30000"/>
+			</scheduling-strategy>
+		</scheduler>
+		<http:request method="GET" doc:name="cal health check sys api" doc:id="d3d9d6c7-586b-460e-ac08-9fe54c820aa8" config-ref="HTTP_Request_configuration" path="/sysAPICall"/>
+		<logger level="INFO" doc:name="Logger" doc:id="24b77312-4514-4ece-81ad-dfcbc115c76f" message="health check done successfully"/>
+		
+		
+	<!-- commenting this - another option to start a flow asynchronously
+		<ee:transform doc:name="Map start AMQ" doc:id="4ce146d8-bedf-48c4-9154-3b9272f4f804" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+{
+	dummy: "dummy"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<vm:publish queueName="startAMQQueue" doc:name="Publish" doc:id="52f5a922-1197-4b20-bf7b-bbeda3f1d2de" config-ref="VM_Config"/>
+	 -->		
+		
+		<flow-ref doc:name="start-AMQListener" doc:id="16c1a583-7c48-4aea-80df-2c7685a30ca3" name="start-AMQListener"/>
+		<flow-ref doc:name="shut-HealthCheck" doc:id="5ee2d616-6cdb-4437-85be-4db6489677eb" name="shut-HealthCheck"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="e65ed484-7af6-40e3-9273-02f33b1dacfa" >
+				<logger level="INFO" doc:name="Logger" doc:id="36229678-1f5c-47cb-9853-c7184743d35b" message="Unable to connect to the Sys API - Failed health check !"/>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+</mule>

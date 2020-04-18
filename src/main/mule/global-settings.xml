@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq" 
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd">
+	<anypoint-mq:config name="Anypoint_MQ_Config" doc:name="Anypoint MQ Config" doc:id="573a1489-5cf8-49cd-a94f-46ba4d3853df" >
+		<anypoint-mq:connection url="https://mq-ap-southeast-2.anypoint.mulesoft.com/api/v1" clientId="6f7780be675d4376ba64c49dd9758ccc" clientSecret="0b6D6EEc6eEd49118f898D46B53FbAaF" />
+	</anypoint-mq:config>
+	<vm:config name="VM_Config" doc:name="VM Config" doc:id="5f0c0491-2a25-48a4-a83e-8265df9999af">
+		<vm:connection />
+		<vm:queues >
+			<vm:queue queueName="NACKQueue" queueType="PERSISTENT" />
+			<vm:queue queueName="startHCQueue" queueType="PERSISTENT" />
+			<vm:queue queueName="startAMQQueue" queueType="PERSISTENT" />
+		</vm:queues>
+	</vm:config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="4508240d-ca2e-4d2e-af20-9f4b5330ca99" >
+		<http:request-connection host="mule-dummy-sys-api.au-s1.cloudhub.io" port="80"/>
+	</http:request-config>
+	</mule>

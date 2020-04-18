@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting"
+	xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd">
+	<sub-flow name="shut-AMQListener" doc:id="d13c36f0-1e6b-4c0f-bb94-10ead82df75a" >
+		<scripting:execute engine="groovy" doc:id="9a08eb50-44b3-4d3d-af5c-9b2f2f01b7bf" doc:name="Execute groovy" >
+			<scripting:code >flow = registry.lookupByName(&quot;mule-serial-processing-exampleFlow&quot;).get();
+      if (flow.isStarted())
+        flow.stop()
+      else 
+          println &quot;Flow is not running&quot;</scripting:code>
+		</scripting:execute>
+		<logger level="INFO" doc:name="Logger" doc:id="bbfa5243-2157-4faf-9b34-ce85496487fe" message="AMQ Listener stopped" />
+	</sub-flow>
+	<sub-flow name="shut-HealthCheck" doc:id="f3a36fed-a99a-4255-9f44-c036d0c19627" >
+		<scripting:execute engine="groovy" doc:id="c1961004-37b6-45d9-aaad-95334c80fc7c" doc:name="Execute Groovy" >
+			<scripting:code >flow = registry.lookupByName(&quot;check-health-to-restart-polling&quot;).get();
+      if (flow.isStarted())
+        flow.stop()
+      else 
+          println &quot;Flow is not running&quot;</scripting:code>
+		</scripting:execute>
+		<logger level="INFO" doc:name="Logger" doc:id="cf8ed056-e12c-41be-ba77-df32a9dc68bb" message="Health check stopped" />
+	</sub-flow>
+	<sub-flow name="start-AMQListener" doc:id="aa0edd23-32e6-45f1-964e-da8082d1195b" >
+		<scripting:execute engine="groovy" doc:id="e637f199-cda2-4984-b152-77fbde7b4997" doc:name="Execute groovy" >
+			<scripting:code >flow = registry.lookupByName(&quot;mule-serial-processing-exampleFlow&quot;).get();
+   if (flow.isStarted())
+     println &quot;Flow is running&quot;
+      else 
+         flow.start()</scripting:code>
+		</scripting:execute>
+		<logger level="INFO" doc:name="Logger" doc:id="f47361d0-e732-4336-a41b-2e813ee46b7b" message="AMQ Listener started" />
+	</sub-flow>
+	<sub-flow name="start-HealthCheck" doc:id="74f2fa8b-3329-4840-9343-15a3fdeec09b" >
+		<scripting:execute engine="groovy" doc:id="fbcec3fc-7b8d-4913-89a9-68f6c8c96752" doc:name="Execute groovy" >
+			<scripting:code >flow = registry.lookupByName(&quot;check-health-to-restart-polling&quot;).get();
+
+if (flow.isStarted())
+     println &quot;Flow is running&quot;
+      else 
+         flow.start()</scripting:code>
+		</scripting:execute>
+		<logger level="INFO" doc:name="Logger" doc:id="5cfcb0de-3e35-468d-bbda-397942239929" message="Health check started" />
+	</sub-flow>
+</mule>
